@@ -23,15 +23,24 @@ class NotesController extends GetxController {
   final Rx<NotesStatus> status = NotesStatus.initial.obs;
   final RxList<Note> notes = <Note>[].obs;
   final RxString query = ''.obs;
+  final RxnInt colorFilter = RxnInt();
+  final RxBool isGrid = true.obs;
 
   List<Note> get filteredNotes {
     final q = query.value.trim().toLowerCase();
-    if (q.isEmpty) return notes;
+    final color = colorFilter.value;
+    if (q.isEmpty && color == null) return notes;
     return notes.where((n) {
+      if (color != null && n.colorIndex != color) return false;
+      if (q.isEmpty) return true;
       return n.title.toLowerCase().contains(q) ||
           n.content.toLowerCase().contains(q);
     }).toList();
   }
+
+  /// الألوان المستخدمة فعليًا في الملاحظات (لشريط الفلترة)
+  List<int> get usedColors =>
+      (notes.map((n) => n.colorIndex).toSet().toList()..sort());
 
   @override
   void onInit() {
@@ -78,5 +87,16 @@ class NotesController extends GetxController {
     await loadNotes();
   }
 
+  /// إرجاع ملاحظة محذوفة كما كانت (لزر «تراجع»)
+  Future<void> restoreNote(Note note) async {
+    await addNoteUseCase(note);
+    await loadNotes();
+  }
+
   void search(String value) => query.value = value;
+
+  void toggleColorFilter(int? index) =>
+      colorFilter.value = colorFilter.value == index ? null : index;
+
+  void toggleView() => isGrid.toggle();
 }
